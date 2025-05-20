@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"errors"
 	"log"
 	"math/rand"
 	"time"
@@ -52,4 +53,12 @@ func CheckGuess(secret, guess string) (black, white int) {
 	}
 
 	return
+}
+
+func ValidateGuess(guess string) error {
+	if len([]rune(guess)) == 4 {
+		return nil
+	} else {
+		return errors.New("ваш код не код, попробуйте ещё раз")
+	}
 }

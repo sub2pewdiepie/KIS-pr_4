@@ -59,7 +59,6 @@ func (s *Server) handleGuess(conn *websocket.Conn, msg *Message) error {
 
 	// Найти сессию по sessionID
 	session, exists := s.GameManager.Sessions[sessionID]
-	session.UpdateActivity()
 	if !exists {
 		conn.WriteJSON(map[string]string{"error": "сессия не найдена"})
 		return nil
@@ -77,6 +76,11 @@ func (s *Server) handleGuess(conn *websocket.Conn, msg *Message) error {
 		return nil
 	}
 	playerName := player.Name
+	err := logic.ValidateGuess(guess)
+	if err != nil {
+		return err
+	}
+	session.UpdateActivity()
 
 	// Проверка попытки
 	black, white := logic.CheckGuess(session.SecretCode, guess)
@@ -90,14 +94,16 @@ func (s *Server) handleGuess(conn *websocket.Conn, msg *Message) error {
 		"white":  white,
 		"moves":  player.Moves,
 	})
-	if player.Moves > 30 {
+	if player.Moves == 30 {
+		session.LostPrayers++
+
 		s.SendMSG2ALL(session, playerName, "ихрасходовал все попытки")
 	} else if black == 4 {
 		//По хорошему вынести в отдельный метод
 		session.GameOver = true
 		session.Winner = playerName
 		session.EndTime = time.Now()
-
+		logic.SaveGameResultToXML(session, "game_result_"+sessionID+".xml")
 		// Уведомление всех игроков о завершении игры
 		for c := range session.Players {
 			c.WriteJSON(map[string]string{
@@ -105,6 +111,19 @@ func (s *Server) handleGuess(conn *websocket.Conn, msg *Message) error {
 				"winner":  playerName,
 				"message": playerName + " угадал код за ",
 				"moves":   "за " + strconv.Itoa(player.Moves),
+			})
+		}
+	} else if session.LostPrayers == len(session.Players) {
+		session.GameOver = true
+		session.Winner = "none have won"
+		session.EndTime = time.Now()
+		logic.SaveGameResultToXML(session, "game_result_"+sessionID+".xml")
+		for c := range session.Players {
+			c.WriteJSON(map[string]string{
+				"status":  "game_over",
+				"winner":  playerName,
+				"message": "все игроки израсходовали попытки",
+				// "moves":   "за " + strconv.Itoa(player.Moves),
 			})
 		}
 	}

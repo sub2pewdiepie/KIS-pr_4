@@ -1,0 +1,16 @@
+<GameResult>
+  <StartTime>2025-05-20T17:19:09+03:00</StartTime>
+  <EndTime>2025-05-20T17:19:21+03:00</EndTime>
+  <SecretCode>ABCD</SecretCode>
+  <Winner>vitya</Winner>
+  <Players>
+    <Player>
+      <Name>alex</Name>
+      <Moves>0</Moves>
+    </Player>
+    <Player>
+      <Name>vitya</Name>
+      <Moves>1</Moves>
+    </Player>
+  </Players>
+</GameResult>

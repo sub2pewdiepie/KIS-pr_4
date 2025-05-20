@@ -26,6 +26,7 @@ type GameSession struct {
 	EndTime      time.Time // Время завершения игры
 	Owner        *Player
 	LastActivity time.Time //Время последнего действия
+	LostPrayers  int
 }
 
 // Новый конструктор GameSession
@@ -46,6 +47,7 @@ func NewGameSession(sessionID string, maxPlayers int) *GameSession {
 		EndTime:      time.Time{},
 		Owner:        nil,
 		LastActivity: time.Now(),
+		LostPrayers:  0,
 	}
 
 	return session
