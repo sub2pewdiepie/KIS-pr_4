@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"pr_4/logic"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -22,8 +23,10 @@ type Message struct {
 }
 
 func NewServer(maxSessions int) *Server {
+	gameManager := logic.NewGameSessionManager(maxSessions)
+	gameManager.StartCleanupRoutine(time.Minute, 30*time.Minute)
 	return &Server{
-		GameManager: logic.NewGameSessionManager(maxSessions),
+		GameManager: gameManager,
 		Upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return true
@@ -54,6 +57,7 @@ func (s *Server) WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 				conn.WriteJSON(map[string]string{"error": err.Error()})
 				continue
 			}
+			session.UpdateActivity()
 			conn.WriteJSON(map[string]string{
 				"status":    "created",
 				"sessionID": session.ID,
@@ -65,12 +69,14 @@ func (s *Server) WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 				conn.WriteJSON(map[string]string{"error": err.Error()})
 				continue
 			}
+			session.UpdateActivity()
 			conn.WriteJSON(map[string]string{
 				"status":    "joined",
 				"sessionID": session.ID,
 			})
 
 		case "start":
+			//Обновление времени в SartGame
 			err := s.GameManager.StartGame(msg.SessionID)
 			if err != nil {
 				conn.WriteJSON(map[string]string{"error": err.Error()})
@@ -82,7 +88,12 @@ func (s *Server) WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 			})
 
 		case "guess":
-			s.handleGuess(conn, &msg)
+			//Обновление времени в handleGuess
+			err = s.handleGuess(conn, &msg)
+			if err != nil {
+				conn.WriteJSON(map[string]string{"error": err.Error()})
+				continue
+			}
 
 		default:
 			conn.WriteJSON(map[string]string{"error": "неизвестная команда"})

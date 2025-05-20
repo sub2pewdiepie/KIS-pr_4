@@ -101,7 +101,7 @@ func (manager *GameSessionManager) StartGame(sessionID string) error {
 
 	session.Started = true
 	session.StartTime = time.Now()
-
+	session.UpdateActivity()
 	return nil
 }
 
@@ -115,4 +115,31 @@ func (m *GameSessionManager) GetSession(sessionID string) (*GameSession, error) 
 	}
 
 	return session, nil
+}
+
+func (manager *GameSessionManager) StartCleanupRoutine(interval time.Duration, expiration time.Duration) {
+	go func() {
+		for {
+			time.Sleep(interval)
+
+			manager.mu.Lock()
+			for id, session := range manager.Sessions {
+				if session.GameOver {
+					// Проверка времени перед удалением законченной игры
+					if time.Since(session.LastActivity) > expiration {
+						delete(manager.Sessions, id)
+						fmt.Printf("Сессия %s удалена по времени.\n", id)
+					}
+				} else {
+					// Удаление по истечении времени
+					if time.Since(session.LastActivity) > expiration {
+						session.GameOver = true
+						session.EndTime = time.Now()
+						fmt.Printf("Сессия %s закончена из-за инактива.\n", id)
+					}
+				}
+			}
+			manager.mu.Unlock()
+		}
+	}()
 }

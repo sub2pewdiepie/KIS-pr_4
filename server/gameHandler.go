@@ -53,27 +53,28 @@ import (
 // 	}
 // }
 
-func (s *Server) handleGuess(conn *websocket.Conn, msg *Message) {
+func (s *Server) handleGuess(conn *websocket.Conn, msg *Message) error {
 	sessionID := msg.SessionID
 	guess := msg.Guess
 
 	// Найти сессию по sessionID
 	session, exists := s.GameManager.Sessions[sessionID]
+	session.UpdateActivity()
 	if !exists {
 		conn.WriteJSON(map[string]string{"error": "сессия не найдена"})
-		return
+		return nil
 	}
 
 	if !session.Started || session.GameOver {
 		conn.WriteJSON(map[string]string{"error": "игра ещё не началась или уже завершена"})
-		return
+		return nil
 	}
 
 	// Получить игрока по соединению
 	player, ok := session.Players[conn]
 	if !ok {
 		conn.WriteJSON(map[string]string{"error": "игрок не найден в сессии"})
-		return
+		return nil
 	}
 	playerName := player.Name
 
@@ -92,6 +93,7 @@ func (s *Server) handleGuess(conn *websocket.Conn, msg *Message) {
 	if player.Moves > 30 {
 		s.SendMSG2ALL(session, playerName, "ихрасходовал все попытки")
 	} else if black == 4 {
+		//По хорошему вынести в отдельный метод
 		session.GameOver = true
 		session.Winner = playerName
 		session.EndTime = time.Now()
@@ -106,6 +108,7 @@ func (s *Server) handleGuess(conn *websocket.Conn, msg *Message) {
 			})
 		}
 	}
+	return nil
 }
 
 func (s *Server) SendMSG2ALL(session *logic.GameSession, playerName string, msg string) {
